@@ -1,7 +1,7 @@
 package com.neuralnet;
 
 /**
- * Created by codecamp on 14/04/16.
+ * NeuralNet Math
  */
 public class NNMath {
 
@@ -18,7 +18,7 @@ public class NNMath {
     }
 
     public static double tanhDerivative(double x){
-        return 1 - Math.tanh(x) * Math.tanh(x);
+        return  1 - x * x;
     }
 
     public static double[][] matrixMultiply(double[][] a, double[][] b) {

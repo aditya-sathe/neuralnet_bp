@@ -3,7 +3,7 @@ package com.neuralnet;
 import java.util.function.Function;
 
 /**
- * Created by codecamp on 14/04/16.
+ * Class for new Layer
  */
 public class NeuronLayer {
 
@@ -13,7 +13,7 @@ public class NeuronLayer {
     }
 
     public enum InitialWeightType {
-        RANDOM // only support random for the moment
+        RANDOM 
     }
 
     double[][] weights;
