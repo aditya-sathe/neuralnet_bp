@@ -3,6 +3,8 @@ package com.neuralnet;
 import static com.neuralnet.MatrixUtil.apply;
 import static com.neuralnet.NNMath.*;
 
+import java.io.FileWriter;
+
 import com.neuralnet.NeuronLayer.ActivationFunctionType;
 
 /**
@@ -19,13 +21,14 @@ public class NeuralNet {
 
 	public NeuralNet(int numOfInputs, int numOfHiddenLayerNeurons, int numOfOutputLayerNeurons, double learningRate,
 			double error, double momentum, boolean useBipolarInputs) {
-		
+
 		if (useBipolarInputs = false) {
 			this.layer1 = new NeuronLayer(numOfHiddenLayerNeurons, numOfInputs);
 			this.layer2 = new NeuronLayer(numOfOutputLayerNeurons, numOfHiddenLayerNeurons);
 		} else {
 			this.layer1 = new NeuronLayer(ActivationFunctionType.TANH, numOfHiddenLayerNeurons, numOfInputs);
-			this.layer2 = new NeuronLayer(ActivationFunctionType.TANH, numOfOutputLayerNeurons, numOfHiddenLayerNeurons);
+			this.layer2 = new NeuronLayer(ActivationFunctionType.TANH, numOfOutputLayerNeurons,
+					numOfHiddenLayerNeurons);
 		}
 		this.learningRate = learningRate;
 		this.totalerr = error;
@@ -56,61 +59,84 @@ public class NeuralNet {
 		inputs = addBias(inputs);
 		double[][] previousAdjustmentLayer1 = null;
 		double[][] previousAdjustmentLayer2 = null;
+		FileWriter filewriter = null;
+		try {
+			filewriter = new FileWriter("out.csv");
 
-		for (int epochs = 1;; epochs++) {
-			// pass the training set through the network
-			applyPass(inputs); // 4x3
+			for (int epochs = 1;; epochs++) {
+				// pass the training set through the network
+				applyPass(inputs); // 4x3
 
-			// adjust weights by error * input * (derivative of output)
+				// adjust weights by error * input * (derivative of output)
 
-			// calculate the error for layer 2
-			// (the difference between the desired output and predicted output for each of
-			// the training inputs)
-			double[][] errorLayer2 = matrixSubtract(outputs, outputLayer2); 
-			double[][] deltaLayer2 = scalarMultiply(errorLayer2, apply(outputLayer2, layer2.activationFunctionDerivative)); 
+				// calculate the error for layer 2
+				// (the difference between the desired output and predicted output for each of
+				// the training inputs)
+				double[][] errorLayer2 = matrixSubtract(outputs, outputLayer2);
+				double[][] deltaLayer2 = scalarMultiply(errorLayer2,
+						apply(outputLayer2, layer2.activationFunctionDerivative));
 
-			// calculate the error for layer 1
-			// (by looking at the weights in layer 1, we can determine by how much layer 1
-			// contributed to the error in layer 2)
+				// calculate the error for layer 1
+				// (by looking at the weights in layer 1, we can determine by how much layer 1
+				// contributed to the error in layer 2)
 
-			double[][] errorLayer1 = matrixMultiply(deltaLayer2, matrixTranspose(layer2.weights)); 
-			double[][] deltaLayer1 = scalarMultiply(errorLayer1, apply(outputLayer1, layer1.activationFunctionDerivative)); 
+				double[][] errorLayer1 = matrixMultiply(deltaLayer2, matrixTranspose(layer2.weights));
+				double[][] deltaLayer1 = scalarMultiply(errorLayer1,
+						apply(outputLayer1, layer1.activationFunctionDerivative));
 
-			// Calculate how much to adjust the weights by
-			// Since we are dealing with matrices, we handle the division by multiplying
-			// the delta output sum with the inputs' transpose!
+				// Calculate how much to adjust the weights by
+				// Since we are dealing with matrices, we handle the division by multiplying
+				// the delta output sum with the inputs' transpose!
 
-			double[][] adjustmentLayer1 = matrixMultiply(matrixTranspose(inputs), deltaLayer1); 
-			double[][] adjustmentLayer2 = matrixMultiply(matrixTranspose(outputLayer1), deltaLayer2); 
+				double[][] adjustmentLayer1 = matrixMultiply(matrixTranspose(inputs), deltaLayer1);
+				double[][] adjustmentLayer2 = matrixMultiply(matrixTranspose(outputLayer1), deltaLayer2);
 
-			// apply learning rate
-			adjustmentLayer1 = MatrixUtil.apply(adjustmentLayer1, (x) -> learningRate * x);
-			adjustmentLayer2 = MatrixUtil.apply(adjustmentLayer2, (x) -> learningRate * x);
+				// apply learning rate
+				adjustmentLayer1 = MatrixUtil.apply(adjustmentLayer1, (x) -> learningRate * x);
+				adjustmentLayer2 = MatrixUtil.apply(adjustmentLayer2, (x) -> learningRate * x);
 
-			// remove extra column
-			adjustmentLayer1 = removeLastColumn(adjustmentLayer1);
+				// remove extra column
+				adjustmentLayer1 = removeLastColumn(adjustmentLayer1);
 
-			// apply momentum
-			if (!(epochs == 1)) {
-				adjustmentLayer1 = NNMath.matrixAdd(adjustmentLayer1, MatrixUtil.apply(previousAdjustmentLayer1, (x) -> momentum * x));
-				adjustmentLayer2 = NNMath.matrixAdd(adjustmentLayer2, MatrixUtil.apply(previousAdjustmentLayer2, (x) -> momentum * x));
+				// apply momentum
+				if (!(epochs == 1)) {
+					adjustmentLayer1 = NNMath.matrixAdd(adjustmentLayer1,
+							MatrixUtil.apply(previousAdjustmentLayer1, (x) -> momentum * x));
+					adjustmentLayer2 = NNMath.matrixAdd(adjustmentLayer2,
+							MatrixUtil.apply(previousAdjustmentLayer2, (x) -> momentum * x));
+				}
+				// adjust the weights
+				this.layer1.adjustWeights(adjustmentLayer1);
+				this.layer2.adjustWeights(adjustmentLayer2);
+
+				double err = calculateTotalError(errorLayer1, errorLayer2);
+				/*if (epochs % 10 == 0) {
+					System.out.println("---Training epochs of " + epochs + " Error " + err);
+					filewriter.append(epochs + "," + err + "\n");
+				}*/
+				if (err < totalerr) {
+					System.out.println("Total Training epochs of " + epochs + " Error " + err);
+					filewriter.append(epochs + "," + err);
+					break;
+				}
+				previousAdjustmentLayer1 = adjustmentLayer1;
+				previousAdjustmentLayer2 = adjustmentLayer2;
 			}
-			// adjust the weights
-			this.layer1.adjustWeights(adjustmentLayer1);
-			this.layer2.adjustWeights(adjustmentLayer2);
-
-			double err = calculateTotalError(errorLayer1, errorLayer2);
-			if (err < totalerr) {
-				System.out.println(" Training epochs of " + epochs + " Error " + err);
-				break;
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				filewriter.flush();
+				filewriter.close();
+			} catch (Exception e) {
+				e.printStackTrace();
 			}
-			previousAdjustmentLayer1 = adjustmentLayer1;
-			previousAdjustmentLayer2 = adjustmentLayer2;
 		}
 	}
 
 	/**
 	 * Calculate mean squared error
+	 * 
 	 * @param errorLayer1
 	 * @param errorLayer2
 	 * @return

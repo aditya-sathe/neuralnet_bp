@@ -12,17 +12,17 @@ public class LearnExorBipolar {
 
 		net.train(exor_in_bipolar, exor_out_bipolar);
 
-		System.out.println("NeuralNet " + net);
+		//System.out.println("NeuralNet " + net);
 
 		// Predict output
 
 		net.think(new double[][] { { -1, -1 } });
 
-		System.out.println("0,0 Output ->" + net.getOutput()[0][0]);
+		System.out.println("Input : -1,-1 Output : " + net.getOutput()[0][0] + " Expected : -1");
 
 		net.think(new double[][] { { 1, -1 } });
 
-		System.out.println("1,0 Output ->" + net.getOutput()[0][0]);
+		System.out.println("Input: 1,-1 , Output : " + net.getOutput()[0][0] + " Expected : 1");
 	}
 
 }
